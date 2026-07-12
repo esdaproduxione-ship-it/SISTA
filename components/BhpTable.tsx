@@ -64,20 +64,72 @@ export default function BhpTable({
       const validRows = rows
         .filter((r) => r.kode_barang && r.nama_barang && r.satuan)
         .map((r) => ({
-          kode_barang: r.kode_barang,
-          nama_barang: r.nama_barang,
-          kategori: r.kategori ?? null,
-          satuan: r.satuan,
+          kode_barang: String(r.kode_barang).trim(),
+          nama_barang: String(r.nama_barang).trim(),
+          kategori: r.kategori ? String(r.kategori).trim() : null,
+          satuan: String(r.satuan).trim(),
           stok_minimum: r.stok_minimum ? Number(r.stok_minimum) : 0,
+          stok_awal: r.stok_awal ? Number(r.stok_awal) : null,
         }));
 
+      const invalidCount = rows.length - validRows.length;
+
       if (validRows.length > 0) {
-        const { error } = await supabase.from("bhp").insert(validRows);
-        if (error) throw error;
-        setImportMsg(`${validRows.length} jenis barang berhasil diimpor.`);
+        // Cek kode_barang mana yang sudah ada, supaya bisa dibedakan
+        // antara "barang baru" (insert + stok awal) dan "barang lama"
+        // (update data master saja, stok tidak ditimpa lewat import).
+        const kodeList = validRows.map((r) => r.kode_barang);
+        const { data: existing, error: existingError } = await supabase
+          .from("bhp")
+          .select("kode_barang")
+          .in("kode_barang", kodeList);
+        if (existingError) throw existingError;
+        const existingSet = new Set((existing ?? []).map((e) => e.kode_barang));
+
+        const rowsBaru = validRows
+          .filter((r) => !existingSet.has(r.kode_barang))
+          .map((r) => ({
+            kode_barang: r.kode_barang,
+            nama_barang: r.nama_barang,
+            kategori: r.kategori,
+            satuan: r.satuan,
+            stok_minimum: r.stok_minimum,
+            stok_saat_ini: r.stok_awal ?? 0,
+          }));
+
+        const rowsUpdate = validRows.filter((r) => existingSet.has(r.kode_barang));
+
+        if (rowsBaru.length > 0) {
+          const { error } = await supabase.from("bhp").insert(rowsBaru);
+          if (error) throw error;
+        }
+
+        for (const r of rowsUpdate) {
+          const { error } = await supabase
+            .from("bhp")
+            .update({
+              nama_barang: r.nama_barang,
+              kategori: r.kategori,
+              satuan: r.satuan,
+              stok_minimum: r.stok_minimum,
+            })
+            .eq("kode_barang", r.kode_barang);
+          if (error) throw error;
+        }
+
+        const ringkasan = [
+          rowsBaru.length > 0 ? `${rowsBaru.length} barang baru ditambahkan` : null,
+          rowsUpdate.length > 0 ? `${rowsUpdate.length} barang lama diperbarui` : null,
+          invalidCount > 0 ? `${invalidCount} baris dilewati (data tidak lengkap)` : null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        setImportMsg(ringkasan + ".");
         window.location.reload();
       } else {
-        setImportMsg("Tidak ada baris valid. Pastikan kolom kode_barang, nama_barang, satuan terisi.");
+        setImportMsg(
+          "Tidak ada baris valid. Pastikan kolom kode_barang, nama_barang, satuan terisi."
+        );
       }
     } catch (err: any) {
       setImportMsg(`Gagal impor: ${err.message ?? "format file tidak valid"}`);
@@ -85,6 +137,65 @@ export default function BhpTable({
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function handleDownloadTemplateCsv() {
+    const contoh = [
+      {
+        kode_barang: "ATK-001",
+        nama_barang: "Kertas HVS A4 80gsm",
+        kategori: "Alat Tulis Kantor",
+        satuan: "rim",
+        stok_minimum: 10,
+        stok_awal: 25,
+      },
+      {
+        kode_barang: "ATK-002",
+        nama_barang: "Tinta Printer Hitam",
+        kategori: "Alat Tulis Kantor",
+        satuan: "pcs",
+        stok_minimum: 5,
+        stok_awal: 12,
+      },
+    ];
+    const csv = Papa.unparse(contoh);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "template_import_bhp.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadTemplateJson() {
+    const contoh = [
+      {
+        kode_barang: "ATK-001",
+        nama_barang: "Kertas HVS A4 80gsm",
+        kategori: "Alat Tulis Kantor",
+        satuan: "rim",
+        stok_minimum: 10,
+        stok_awal: 25,
+      },
+      {
+        kode_barang: "ATK-002",
+        nama_barang: "Tinta Printer Hitam",
+        kategori: "Alat Tulis Kantor",
+        satuan: "pcs",
+        stok_minimum: 5,
+        stok_awal: 12,
+      },
+    ];
+    const blob = new Blob([JSON.stringify(contoh, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "template_import_bhp.json";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleExportExcel() {
@@ -142,6 +253,22 @@ export default function BhpTable({
             <>
               <input ref={fileInputRef} type="file" accept=".csv,.json" className="hidden" onChange={handleFileChange} />
               <button
+                onClick={handleDownloadTemplateCsv}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-navy-100 text-sm font-medium text-navy-600 hover:bg-navy-50 transition"
+                title="Unduh contoh format CSV yang sesuai dengan aplikasi"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Template CSV
+              </button>
+              <button
+                onClick={handleDownloadTemplateJson}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-navy-100 text-sm font-medium text-navy-600 hover:bg-navy-50 transition"
+                title="Unduh contoh format JSON yang sesuai dengan aplikasi"
+              >
+                <FileText className="w-4 h-4" />
+                Template JSON
+              </button>
+              <button
                 onClick={handleImportClick}
                 disabled={importing}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg border border-navy-100 text-sm font-medium text-navy-700 hover:bg-navy-50 transition"
@@ -161,6 +288,19 @@ export default function BhpTable({
           </button>
         </div>
       </div>
+
+      {canEdit && (
+        <p className="px-4 py-2 text-xs text-navy-400 border-b border-navy-100 bg-navy-50/50">
+          Kolom yang didukung: <code className="font-mono">kode_barang</code>,{" "}
+          <code className="font-mono">nama_barang</code>,{" "}
+          <code className="font-mono">satuan</code> (wajib),{" "}
+          <code className="font-mono">kategori</code>,{" "}
+          <code className="font-mono">stok_minimum</code>,{" "}
+          <code className="font-mono">stok_awal</code> (opsional). Kode barang yang
+          sudah ada otomatis diperbarui datanya, bukan diduplikasi; stok hanya diisi
+          dari <code className="font-mono">stok_awal</code> untuk barang baru.
+        </p>
+      )}
 
       {importMsg && (
         <p className="px-4 py-2 text-sm bg-bronze-50 text-navy-700 border-b border-navy-100">{importMsg}</p>
