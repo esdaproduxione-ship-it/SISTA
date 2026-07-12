@@ -13,6 +13,14 @@ export default async function AsetPage() {
 
   const { data: role } = await supabase.rpc("fn_current_role");
 
+  const asetFormatted = (aset ?? []).map((item: any) => ({
+    ...item,
+    kode_akun_bmd: Array.isArray(item.kode_akun_bmd)
+      ? item.kode_akun_bmd[0] ?? null
+      : item.kode_akun_bmd,
+    ruangan: Array.isArray(item.ruangan) ? item.ruangan[0] ?? null : item.ruangan,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -24,7 +32,7 @@ export default async function AsetPage() {
         </div>
       </div>
 
-      <AsetTable initialData={aset ?? []} canEdit={role === "admin" || role === "super_admin"} />
+      <AsetTable initialData={asetFormatted} canEdit={role === "admin" || role === "super_admin"} />
     </div>
   );
 }
