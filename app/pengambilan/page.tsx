@@ -84,6 +84,7 @@ export default function PengambilanBarangPage() {
       title="Pengambilan Barang Persediaan"
       description="Isi formulir ini setiap kali mengambil ATK, kertas, tinta printer, atau barang habis pakai lainnya. Data akan tercatat otomatis di kartu stok."
       nomorFormulir="Kartu Stok Digital — Real-time"
+      formulirLain={{ href: "/peminjaman", label: "Peminjaman Aset" }}
       langkah={[
         {
           label: "Pilih barang & jumlah",
