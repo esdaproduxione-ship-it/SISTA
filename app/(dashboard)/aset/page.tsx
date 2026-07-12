@@ -7,7 +7,7 @@ export default async function AsetPage() {
   const { data: aset } = await supabase
     .from("aset")
     .select(
-      "id, nomor_register, nama_barang, merk_tipe, tahun_perolehan, nilai_perolehan, kondisi, status, sedang_dipinjam, kode_akun_bmd(kode, nama_klasifikasi), ruangan(nama_ruangan), penanggung_jawab"
+      "id, nomor_register, kode_lokasi, nama_barang, merk_tipe, tahun_perolehan, nilai_perolehan, kondisi, status, sedang_dipinjam, kode_akun_bmd(kode, nama_klasifikasi), ruangan(nama_ruangan), penanggung_jawab"
     )
     .order("created_at", { ascending: false });
 
