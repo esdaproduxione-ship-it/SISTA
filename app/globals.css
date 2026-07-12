@@ -27,4 +27,61 @@
     background: currentColor;
     opacity: 0.35;
   }
+
+  /* Perforasi vertikal ala sobekan bon/kartu peminjaman fisik,
+     memisahkan panel informasi dan panel formulir */
+  .ticket-perforation {
+    position: relative;
+    width: 1px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      theme("colors.bronze.200") 0 7px,
+      transparent 7px 16px
+    );
+  }
+  .ticket-perforation::before,
+  .ticket-perforation::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: theme("colors.canvas");
+  }
+  .ticket-perforation::before {
+    top: -13px;
+  }
+  .ticket-perforation::after {
+    bottom: -13px;
+  }
+
+  /* Perforasi horizontal, dipakai saat panel ditumpuk di layar sempit */
+  .ticket-perforation-h {
+    position: relative;
+    height: 1px;
+    background-image: repeating-linear-gradient(
+      to right,
+      theme("colors.bronze.200") 0 7px,
+      transparent 7px 16px
+    );
+  }
+  .ticket-perforation-h::before,
+  .ticket-perforation-h::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: theme("colors.canvas");
+  }
+  .ticket-perforation-h::before {
+    left: -13px;
+  }
+  .ticket-perforation-h::after {
+    right: -13px;
+  }
 }
