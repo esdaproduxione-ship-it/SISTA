@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 type AsetRow = {
   id: string;
   nomor_register: string;
+  kode_lokasi: string | null;
   nama_barang: string;
   merk_tipe: string | null;
   tahun_perolehan: number | null;
@@ -28,6 +29,20 @@ const kondisiStyle: Record<string, string> = {
   "Rusak Ringan": "bg-warn/10 text-warn",
   "Rusak Berat": "bg-bad/10 text-bad",
 };
+
+// Kode register sesuai Pasal 7 Permendagri 108/2016:
+// kode lokasi & tahun perolehan + kode barang & nomor urut pendaftaran.
+// Fallback ke format lama (kode akun + nomor register) selama kode_lokasi
+// belum diisi untuk aset tersebut (masa transisi, lihat migration 0006).
+function formatKodeRegister(a: AsetRow): string {
+  if (a.kode_akun_bmd && a.kode_lokasi && a.tahun_perolehan) {
+    return `${a.kode_lokasi}.${a.tahun_perolehan}.${a.kode_akun_bmd.kode}.${a.nomor_register}`;
+  }
+  if (a.kode_akun_bmd) {
+    return `${a.kode_akun_bmd.kode}.${a.nomor_register}`;
+  }
+  return a.nomor_register;
+}
 
 export default function AsetTable({
   initialData,
@@ -116,9 +131,7 @@ export default function AsetTable({
 
   function handleExportExcel() {
     const rows = filtered.map((a) => ({
-      "Kode Barang": a.kode_akun_bmd
-        ? `${a.kode_akun_bmd.kode}.${a.nomor_register}`
-        : a.nomor_register,
+      "Kode Barang": formatKodeRegister(a),
       "Nama Barang": a.nama_barang,
       "Merk/Tipe": a.merk_tipe ?? "-",
       "Tahun Perolehan": a.tahun_perolehan ?? "-",
@@ -141,7 +154,7 @@ export default function AsetTable({
       startY: 22,
       head: [["Kode Barang", "Nama Barang", "Tahun", "Nilai Perolehan", "Kondisi", "Ruangan", "PJ"]],
       body: filtered.map((a) => [
-        a.kode_akun_bmd ? `${a.kode_akun_bmd.kode}.${a.nomor_register}` : a.nomor_register,
+        formatKodeRegister(a),
         a.nama_barang,
         a.tahun_perolehan ?? "-",
         new Intl.NumberFormat("id-ID").format(a.nilai_perolehan),
@@ -235,7 +248,7 @@ export default function AsetTable({
               filtered.map((a) => (
                 <tr key={a.id} className="border-t border-navy-100 hover:bg-navy-50/50">
                   <td className="px-4 py-3 font-mono text-xs text-navy-600">
-                    {a.kode_akun_bmd ? `${a.kode_akun_bmd.kode}.${a.nomor_register}` : a.nomor_register}
+                    {formatKodeRegister(a)}
                   </td>
                   <td className="px-4 py-3 text-navy-700 font-medium">{a.nama_barang}</td>
                   <td className="px-4 py-3 text-navy-600">{a.tahun_perolehan ?? "-"}</td>
