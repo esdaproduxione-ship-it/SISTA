@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import { Boxes, LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Boxes, LucideIcon } from "lucide-react";
 
 type Langkah = {
   label: string;
@@ -13,6 +14,7 @@ export default function PublicFormShell({
   description,
   langkah,
   nomorFormulir,
+  formulirLain,
   children,
 }: {
   icon: LucideIcon;
@@ -21,11 +23,31 @@ export default function PublicFormShell({
   description: string;
   langkah: Langkah[];
   nomorFormulir: string;
+  formulirLain: { href: string; label: string };
   children: ReactNode;
 }) {
   return (
     <main className="min-h-screen bg-canvas">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col lg:flex-row">
+      {/* Navbar tipis penghubung ke beranda & form sebelah */}
+      <div className="border-b border-navy-100 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm text-navy-400 transition hover:text-navy-700"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Beranda
+          </Link>
+          <Link
+            href={formulirLain.href}
+            className="text-sm font-medium text-bronze-600 hover:text-bronze-400"
+          >
+            {formulirLain.label} →
+          </Link>
+        </div>
+      </div>
+
+      <div className="mx-auto flex max-w-6xl flex-col lg:flex-row">
         {/* Panel kiri — informasi & konteks */}
         <div className="relative bg-navy-700 px-6 py-10 sm:px-10 sm:py-14 lg:w-[42%] lg:px-12 lg:py-16">
           <div className="mx-auto flex h-full max-w-md flex-col lg:mx-0">
