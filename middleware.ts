@@ -32,9 +32,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
-  const publicPaths = ["/pengambilan", "/peminjaman"];
+  const publicPaths = ["/", "/pengambilan", "/peminjaman"];
   const isPublicPage = publicPaths.some((p) =>
-    request.nextUrl.pathname.startsWith(p)
+    p === "/" ? request.nextUrl.pathname === "/" : request.nextUrl.pathname.startsWith(p)
   );
 
   if (isPublicPage) {
