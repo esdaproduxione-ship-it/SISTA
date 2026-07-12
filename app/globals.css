@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-canvas text-navy-700 font-body antialiased;
+  }
+}
+
+@layer components {
+  /* Kartu statistik bermotif label inventaris: sudut ber-notch */
+  .tag-card {
+    position: relative;
+    clip-path: polygon(
+      0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%
+    );
+  }
+  .tag-card::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.35;
+  }
+}
