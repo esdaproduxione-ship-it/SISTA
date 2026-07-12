@@ -88,6 +88,7 @@ export default function PeminjamanAsetPage() {
       title="Peminjaman Aset"
       description="Untuk peminjaman internal OPD maupun eksternal OPD. Aset yang sedang dipinjam tidak akan muncul di daftar sampai dikembalikan."
       nomorFormulir="Buku Peminjaman Digital — Real-time"
+      formulirLain={{ href: "/pengambilan", label: "Pengambilan Barang" }}
       langkah={[
         {
           label: "Pilih aset yang tersedia",
