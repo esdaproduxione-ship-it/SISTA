@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Boxes, CheckCircle2, Tag } from "lucide-react";
+import { CheckCircle2, Tag, Boxes, ClipboardList } from "lucide-react";
+import PublicFormShell from "@/components/PublicFormShell";
 
 type AsetOption = {
   id: string;
@@ -81,164 +82,174 @@ export default function PeminjamanAsetPage() {
   }
 
   return (
-    <main className="min-h-screen bg-canvas flex items-center justify-center p-6">
-      <div className="w-full max-w-lg">
-        <div className="flex items-center gap-2.5 mb-6 justify-center">
-          <div className="w-9 h-9 rounded-lg bg-navy-700 flex items-center justify-center">
-            <Boxes className="w-4.5 h-4.5 text-bronze-400" strokeWidth={2.5} />
-          </div>
-          <span className="font-display font-bold text-xl text-navy-700">SISTA</span>
+    <PublicFormShell
+      icon={Boxes}
+      eyebrow="Formulir Publik · Tanpa Login"
+      title="Peminjaman Aset"
+      description="Untuk peminjaman internal OPD maupun eksternal OPD. Aset yang sedang dipinjam tidak akan muncul di daftar sampai dikembalikan."
+      nomorFormulir="Buku Peminjaman Digital — Real-time"
+      langkah={[
+        {
+          label: "Pilih aset yang tersedia",
+          desc: "Hanya aset dengan status siap pinjam yang muncul.",
+        },
+        {
+          label: "Isi data peminjam",
+          desc: "Jenis peminjam, unit asal, dan keperluan.",
+        },
+        {
+          label: "Tercatat otomatis",
+          desc: "Status aset berubah menjadi dipinjam seketika.",
+        },
+      ]}
+    >
+      <div className="rounded-xl border border-navy-100 bg-white p-6 sm:p-8">
+        <div className="mb-6 flex items-center gap-2 text-navy-400">
+          <ClipboardList className="h-4 w-4" />
+          <span className="text-xs font-medium uppercase tracking-wide">
+            Detail Peminjaman
+          </span>
         </div>
 
-        <div className="bg-white rounded-xl border border-navy-100 p-6 sm:p-8">
-          <h1 className="font-display font-bold text-xl text-navy-700 mb-1">
-            Formulir Peminjaman Aset
-          </h1>
-          <p className="text-navy-400 text-sm mb-6">
-            Untuk peminjaman internal OPD maupun eksternal OPD. Aset yang sedang
-            dipinjam tidak akan muncul di daftar sampai dikembalikan.
-          </p>
+        {success && (
+          <div className="mb-5 flex items-start gap-2 rounded-lg bg-good/10 px-4 py-3 text-sm text-good">
+            <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+            {success}
+          </div>
+        )}
 
-          {success && (
-            <div className="flex items-start gap-2 bg-good/10 text-good rounded-lg px-4 py-3 mb-4 text-sm">
-              <CheckCircle2 className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-              {success}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-navy-700">
+              Jenis Peminjam
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["Internal OPD", "Eksternal OPD"] as const).map((j) => (
+                <button
+                  type="button"
+                  key={j}
+                  onClick={() => setJenisPeminjam(j)}
+                  className={`rounded-lg border py-2.5 text-sm font-medium transition ${
+                    jenisPeminjam === j
+                      ? "border-navy-700 bg-navy-700 text-white"
+                      : "border-navy-100 text-navy-600 hover:bg-navy-50"
+                  }`}
+                >
+                  {j}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                Jenis Peminjam
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {(["Internal OPD", "Eksternal OPD"] as const).map((j) => (
-                  <button
-                    type="button"
-                    key={j}
-                    onClick={() => setJenisPeminjam(j)}
-                    className={`py-2.5 rounded-lg border text-sm font-medium transition ${
-                      jenisPeminjam === j
-                        ? "bg-navy-700 text-white border-navy-700"
-                        : "border-navy-100 text-navy-600 hover:bg-navy-50"
-                    }`}
-                  >
-                    {j}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                Aset yang Dipinjam
-              </label>
-              <select
-                value={asetId}
-                onChange={(e) => setAsetId(e.target.value)}
-                className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
-              >
-                <option value="">
-                  {loadingItems ? "Memuat daftar aset..." : "Pilih aset"}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-navy-700">
+              Aset yang Dipinjam
+            </label>
+            <select
+              value={asetId}
+              onChange={(e) => setAsetId(e.target.value)}
+              className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
+            >
+              <option value="">
+                {loadingItems ? "Memuat daftar aset..." : "Pilih aset"}
+              </option>
+              {items.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.nama_barang} — kondisi {i.kondisi}
                 </option>
-                {items.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.nama_barang} — kondisi {i.kondisi}
-                  </option>
-                ))}
-              </select>
-              {selected && (
-                <p className="text-xs text-navy-400 mt-1.5 flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5" />
-                  Kode {selected.kode_barang}
-                </p>
-              )}
-            </div>
+              ))}
+            </select>
+            {selected && (
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-navy-400">
+                <Tag className="h-3.5 w-3.5" />
+                Kode {selected.kode_barang}
+              </p>
+            )}
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                  Nama Peminjam
-                </label>
-                <input
-                  type="text"
-                  value={nama}
-                  onChange={(e) => setNama(e.target.value)}
-                  className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
-                  placeholder="Nama lengkap"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                  {jenisPeminjam === "Internal OPD" ? "Bidang" : "Instansi Asal"}
-                </label>
-                <input
-                  type="text"
-                  value={unitAsal}
-                  onChange={(e) => setUnitAsal(e.target.value)}
-                  className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
-                  placeholder={jenisPeminjam === "Internal OPD" ? "contoh: Bidang Umum" : "contoh: Dinas ABC"}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                  No. HP (opsional)
-                </label>
-                <input
-                  type="tel"
-                  value={noHp}
-                  onChange={(e) => setNoHp(e.target.value)}
-                  className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
-                  placeholder="08xxxxxxxxxx"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                  Rencana Tanggal Kembali
-                </label>
-                <input
-                  type="date"
-                  value={rencanaKembali}
-                  onChange={(e) => setRencanaKembali(e.target.value)}
-                  className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
-                />
-              </div>
-            </div>
-
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                Keperluan Peminjaman
+              <label className="mb-1.5 block text-sm font-medium text-navy-700">
+                Nama Peminjam
               </label>
-              <textarea
-                value={keperluan}
-                onChange={(e) => setKeperluan(e.target.value)}
-                rows={2}
+              <input
+                type="text"
+                value={nama}
+                onChange={(e) => setNama(e.target.value)}
                 className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
-                placeholder="contoh: kegiatan rapat koordinasi eksternal"
+                placeholder="Nama lengkap"
               />
             </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-navy-700">
+                {jenisPeminjam === "Internal OPD" ? "Bidang" : "Instansi Asal"}
+              </label>
+              <input
+                type="text"
+                value={unitAsal}
+                onChange={(e) => setUnitAsal(e.target.value)}
+                className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
+                placeholder={jenisPeminjam === "Internal OPD" ? "contoh: Bidang Umum" : "contoh: Dinas ABC"}
+              />
+            </div>
+          </div>
 
-            {error && (
-              <p className="text-bad text-sm bg-bad/10 rounded-lg px-3 py-2">{error}</p>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-navy-700">
+                No. HP (opsional)
+              </label>
+              <input
+                type="tel"
+                value={noHp}
+                onChange={(e) => setNoHp(e.target.value)}
+                className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
+                placeholder="08xxxxxxxxxx"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-navy-700">
+                Rencana Tanggal Kembali
+              </label>
+              <input
+                type="date"
+                value={rencanaKembali}
+                onChange={(e) => setRencanaKembali(e.target.value)}
+                className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
+              />
+            </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg bg-navy-700 text-white font-medium py-2.5 hover:bg-navy-600 transition disabled:opacity-60"
-            >
-              {submitting ? "Menyimpan..." : "Ajukan Peminjaman"}
-            </button>
-          </form>
-        </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-navy-700">
+              Keperluan Peminjaman
+            </label>
+            <textarea
+              value={keperluan}
+              onChange={(e) => setKeperluan(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-navy-100 px-3.5 py-2.5 text-navy-700 outline-none focus:border-bronze-400 focus:ring-2 focus:ring-bronze-400/20"
+              placeholder="contoh: kegiatan rapat koordinasi eksternal"
+            />
+          </div>
 
-        <p className="text-center text-xs text-navy-400 mt-4">
-          Formulir ini tidak memerlukan login. Data tersimpan otomatis di sistem SISTA.
-        </p>
+          {error && (
+            <p className="rounded-lg bg-bad/10 px-3 py-2 text-sm text-bad">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-lg bg-navy-700 py-2.5 font-medium text-white transition hover:bg-navy-600 disabled:opacity-60"
+          >
+            {submitting ? "Menyimpan..." : "Ajukan Peminjaman"}
+          </button>
+        </form>
       </div>
-    </main>
+
+      <p className="mt-4 text-center text-xs text-navy-400">
+        Formulir ini tidak memerlukan login. Data tersimpan otomatis di sistem SISTA.
+      </p>
+    </PublicFormShell>
   );
 }
