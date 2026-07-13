@@ -76,28 +76,50 @@ export default function AsetTable({
 
     try {
       let rows: any[] = [];
+      let parseErrors: string[] = [];
 
       if (file.name.endsWith(".json")) {
         const text = await file.text();
-        rows = JSON.parse(text);
+        try {
+          rows = JSON.parse(text);
+        } catch {
+          throw new Error(
+            "File JSON tidak valid. Pastikan formatnya berupa array objek, contoh: [{...}, {...}]"
+          );
+        }
+        if (!Array.isArray(rows)) {
+          throw new Error("File JSON harus berupa array (daftar objek), bukan satu objek tunggal.");
+        }
       } else {
-        rows = await new Promise((resolve, reject) => {
+        const parsed = await new Promise<Papa.ParseResult<any>>((resolve, reject) => {
           Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            complete: (res) => resolve(res.data),
+            // Excel versi Indonesia sering pakai ";" sebagai pemisah kolom,
+            // bukan ",". Tanpa ini, file semacam itu bisa terbaca 0 baris
+            // tanpa pesan error sama sekali.
+            delimitersToGuess: [",", ";", "\t", "|"],
+            transformHeader: (h) => h.trim().replace(/^\uFEFF/, ""),
+            complete: (res) => resolve(res),
             error: reject,
           });
         });
+        rows = parsed.data;
+        parseErrors = (parsed.errors ?? []).map(
+          (er) => `Baris ${er.row ?? "?"}: ${er.message}`
+        );
+      }
+
+      if (!rows || rows.length === 0) {
+        setImportMsg(
+          "File tidak berisi data yang bisa dibaca. Cek kembali: apakah file punya baris data di bawah header, dan pemisah kolomnya benar (koma atau titik-koma)? " +
+            (parseErrors.length > 0 ? "Detail: " + parseErrors.join("; ") : "")
+        );
+        return;
       }
 
       // Validasi minimal: field wajib harus ada
       const invalid = rows.filter((r) => !r.nama_barang || !r.nomor_register);
-      if (invalid.length > 0) {
-        setImportMsg(
-          `${invalid.length} baris dilewati karena field 'nama_barang' atau 'nomor_register' kosong.`
-        );
-      }
 
       const validRows = rows
         .filter((r) => r.nama_barang && r.nomor_register)
@@ -114,12 +136,18 @@ export default function AsetTable({
       if (validRows.length > 0) {
         const { error } = await supabase.from("aset").insert(validRows);
         if (error) throw error;
-        setImportMsg((prev) =>
+        setImportMsg(
           `${validRows.length} data aset berhasil diimpor.` +
-          (prev ? " " + prev : "")
+            (invalid.length > 0
+              ? ` ${invalid.length} baris dilewati karena field 'nama_barang' atau 'nomor_register' kosong.`
+              : "")
         );
         // refresh sederhana
         window.location.reload();
+      } else {
+        setImportMsg(
+          `Tidak ada baris valid dari ${rows.length} baris yang terbaca. Semua baris kosong pada kolom 'nama_barang' atau 'nomor_register' — cek nama kolom di file kamu harus persis 'nama_barang' dan 'nomor_register' (huruf kecil, pakai underscore).`
+        );
       }
     } catch (err: any) {
       setImportMsg(`Gagal impor: ${err.message ?? "format file tidak valid"}`);
@@ -127,6 +155,69 @@ export default function AsetTable({
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function handleDownloadTemplateCsv() {
+    const contoh = [
+      {
+        nomor_register: "0001",
+        nama_barang: "Meja Kerja Kayu",
+        merk_tipe: "Olympic",
+        tahun_perolehan: 2023,
+        nilai_perolehan: 1500000,
+        kondisi: "Baik",
+        penanggung_jawab: "Nama Petugas",
+      },
+      {
+        nomor_register: "0002",
+        nama_barang: "Kursi Kantor",
+        merk_tipe: "Chairman",
+        tahun_perolehan: 2023,
+        nilai_perolehan: 850000,
+        kondisi: "Baik",
+        penanggung_jawab: "Nama Petugas",
+      },
+    ];
+    const csv = Papa.unparse(contoh);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "template_import_aset.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadTemplateJson() {
+    const contoh = [
+      {
+        nomor_register: "0001",
+        nama_barang: "Meja Kerja Kayu",
+        merk_tipe: "Olympic",
+        tahun_perolehan: 2023,
+        nilai_perolehan: 1500000,
+        kondisi: "Baik",
+        penanggung_jawab: "Nama Petugas",
+      },
+      {
+        nomor_register: "0002",
+        nama_barang: "Kursi Kantor",
+        merk_tipe: "Chairman",
+        tahun_perolehan: 2023,
+        nilai_perolehan: 850000,
+        kondisi: "Baik",
+        penanggung_jawab: "Nama Petugas",
+      },
+    ];
+    const blob = new Blob([JSON.stringify(contoh, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "template_import_aset.json";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleExportExcel() {
@@ -192,6 +283,22 @@ export default function AsetTable({
                 onChange={handleFileChange}
               />
               <button
+                onClick={handleDownloadTemplateCsv}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-navy-100 text-sm font-medium text-navy-600 hover:bg-navy-50 transition"
+                title="Unduh contoh format CSV yang sesuai dengan aplikasi"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Template CSV
+              </button>
+              <button
+                onClick={handleDownloadTemplateJson}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-navy-100 text-sm font-medium text-navy-600 hover:bg-navy-50 transition"
+                title="Unduh contoh format JSON yang sesuai dengan aplikasi"
+              >
+                <FileText className="w-4 h-4" />
+                Template JSON
+              </button>
+              <button
                 onClick={handleImportClick}
                 disabled={importing}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg border border-navy-100 text-sm font-medium text-navy-700 hover:bg-navy-50 transition"
@@ -217,6 +324,19 @@ export default function AsetTable({
           </button>
         </div>
       </div>
+
+      {canEdit && (
+        <p className="px-4 py-2 text-xs text-navy-400 border-b border-navy-100 bg-navy-50/50">
+          Kolom yang didukung: <code className="font-mono">nomor_register</code>,{" "}
+          <code className="font-mono">nama_barang</code> (wajib),{" "}
+          <code className="font-mono">merk_tipe</code>,{" "}
+          <code className="font-mono">tahun_perolehan</code>,{" "}
+          <code className="font-mono">nilai_perolehan</code>,{" "}
+          <code className="font-mono">kondisi</code> (Baik / Rusak Ringan / Rusak
+          Berat), <code className="font-mono">penanggung_jawab</code>. File Excel
+          harus disimpan sebagai CSV terlebih dahulu, bukan .xlsx.
+        </p>
+      )}
 
       {importMsg && (
         <p className="px-4 py-2 text-sm bg-bronze-50 text-navy-700 border-b border-navy-100">
